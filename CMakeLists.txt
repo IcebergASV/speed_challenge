@@ -48,9 +48,10 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
- add_message_files(
-   FILES
- )
+ #Generate messages in the 'msg' folder
+ #add_message_files(
+ #  FILES
+ #)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -67,13 +68,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-
- generate_messages(
-   DEPENDENCIES
-   geometry_msgs
-   std_msgs
- )
-
+ #generate_messages(
+ #  DEPENDENCIES
+ #  geometry_msgs
+ #  std_msgs
+ #)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -123,12 +122,6 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(task_ctrl src/task_ctrl.cpp)
-add_dependencies(task_ctrl ${task_ctrl_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(task_ctrl
-  ${catkin_LIBRARIES}
-)
-
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/task_master.cpp
@@ -155,9 +148,9 @@ target_link_libraries(task_ctrl
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(wp_filter_sender
-  waypointSenderFunctionsLib
-)
+# target_link_libraries(${PROJECT_NAME}_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -212,5 +205,4 @@ target_link_libraries(wp_filter_sender
 # endif()
 
 ## Add folders to be run by python nosetests
-
 # catkin_add_nosetests(test)
