@@ -68,11 +68,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
- #generate_messages(
- #  DEPENDENCIES
- #  geometry_msgs
- #  std_msgs
- #)
+ generate_messages(
+   DEPENDENCIES
+   geometry_msgs
+   std_msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -136,6 +136,10 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/task_master_node.cpp)
+
+add_executable(speed_challenge_ctrl src/speed_challenge_ctrl.cpp)
+target_link_libraries(speed_challenge_ctrl ${catkin_LIBRARIES})
+add_dependencies(speed_challenge_ctrl ${catkin_EXPORTED_TARGETS} ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
