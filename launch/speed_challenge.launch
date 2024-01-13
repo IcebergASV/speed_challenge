@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  
+  <!-- Nodes -->
+  <node name="speed_challenge_node" pkg="speed_challenge" type="speed_challenge_ctrl" output="screen">
+    <rosparam file="$(find speed_challenge)/config/params.yaml" command="load" />
+  </node>
+
+</launch>

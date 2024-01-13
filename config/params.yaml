@@ -1,0 +1,11 @@
+
+# angle for point 1 and 3 while circling
+avoidance_angle: 30 
+
+# distance from prop for point 2 
+avoidance_distance: 5
+
+# acceptable error when checking if point is reached
+acceptable_error: 2
+
+
