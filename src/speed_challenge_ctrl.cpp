@@ -19,9 +19,9 @@ public:
     SpeedChallenge(): nh_(""), private_nh_("~")
     {
         // Get params 
-        private_nh_.param<float>("avoidance_angle", avoidance_angle, 30.0);
-        private_nh_.param<float>("avoidance_distance", avoidance_distance, 5.0);
-        private_nh_.param<float>("acceptable_error", acceptable_error, 2.0);
+        private_nh_.param<float>("avoidance_angle", avoidance_angle_p, 30.0);
+        private_nh_.param<float>("avoidance_distance", avoidance_distance_p, 5.0);
+        private_nh_.param<float>("acceptable_error", acceptable_error_p, 2.0);
 
         // Subcribe to prop array
         prop_sub_ = nh_.subscribe("/prop_array", 1, &SpeedChallenge::propCallback, this);
@@ -57,21 +57,21 @@ private:
     ros::Publisher task_pos_;
    
     //Params 
-    float avoidance_angle;
-    float avoidance_distance;
-    float acceptable_error;
+    float avoidance_angle_p;
+    float avoidance_distance_p;
+    float acceptable_error_p;
 
     std::string local_pose_topic_;
 
     geometry_msgs::PoseStamped current_pos_;
 
     // Direction vectors
-    geometry_msgs::Point starting_pos_2_prop;
-    geometry_msgs::Point point1_direction_vec;
-    geometry_msgs::Point point2_direction_vec;
-    geometry_msgs::Point point3_direction_vec;
+    geometry_msgs::Point starting_pos_2_prop_;
+    geometry_msgs::Point point1_direction_vec_;
+    geometry_msgs::Point point2_direction_vec_;
+    geometry_msgs::Point point3_direction_vec_;
     
-    geometry_msgs::PoseStamped starting_pos;
+    geometry_msgs::PoseStamped starting_pos_;
 
     enum states {NOT_STARTED, MOVE_TO_POINT1, MOVE_TO_POINT2, MOVE_TO_POINT3, RETURN_TO_START};
 
@@ -79,9 +79,9 @@ private:
 
     prop_mapper::PropArray prop_array_;
 
-    prop_mapper::Prop yellow_prop;
 
-    task_master::TaskGoalPosition task_goal_pos;
+
+    task_master::TaskGoalPosition task_goal_pos_;
 
     bool isReached() {
 
@@ -92,8 +92,8 @@ private:
         float current_pos_x = current_pos_.pose.position.y;
         float current_pos_y = -1 * current_pos_.pose.position.x;
 
-        if (current_pos_x < task_goal_pos.point.x + acceptable_error & current_pos_x > task_goal_pos.point.x - acceptable_error) {
-            if (current_pos_y < task_goal_pos.point.y + acceptable_error & current_pos_y > task_goal_pos.point.y - acceptable_error) {
+        if (current_pos_x < task_goal_pos_.point.x + acceptable_error_p & current_pos_x > task_goal_pos_.point.x - acceptable_error_p) {
+            if (current_pos_y < task_goal_pos_.point.y + acceptable_error_p & current_pos_y > task_goal_pos_.point.y - acceptable_error_p) {
                 atDestination = true;
             }
         }
@@ -109,7 +109,16 @@ private:
 
     void taskCallback(const task_master::Task msg){
 
-        find_yellow_prop();
+        prop_mapper::Prop yellow_prop;
+
+        if(find_yellow_prop(yellow_prop)){
+
+            ROS_INFO("Yellow Prop Found");
+        }
+        else{
+
+             ROS_INFO("Yellow Prop NOT Found");
+        }
 
         // Get x and y of prop
         float prop_x = yellow_prop.vector.x;
@@ -133,30 +142,30 @@ private:
             // TODO: Use conversion node
             // Direction vector from start to prop 
 
-            starting_pos_2_prop.x = prop_x - starting_pos.pose.position.y;
-            starting_pos_2_prop.y = prop_y - (-1 * starting_pos.pose.position.x);
+            starting_pos_2_prop_.x = prop_x - starting_pos_.pose.position.y;
+            starting_pos_2_prop_.y = prop_y - (-1 * starting_pos_.pose.position.x);
 
             // Distance from start to prop 
 
-            prop_distance = pow((starting_pos_2_prop.x * starting_pos_2_prop.x) + (starting_pos_2_prop.y * starting_pos_2_prop.y), 0.5);
+            prop_distance = pow((starting_pos_2_prop_.x * starting_pos_2_prop_.x) + (starting_pos_2_prop_.y * starting_pos_2_prop_.y), 0.5);
 
 
             // Direction vector from start to point 1 (Rotate 30 degrees clockwise)
 
-            point1_direction_vec.x = starting_pos_2_prop.x * cos(-avoidance_angle * M_PI/180) - starting_pos_2_prop.x * sin(-avoidance_angle * M_PI/180);
-            point1_direction_vec.y = starting_pos_2_prop.y * sin(-avoidance_angle * M_PI/180) + starting_pos_2_prop.y * cos(-avoidance_angle * M_PI/180);
+            point1_direction_vec_.x = starting_pos_2_prop_.x * cos(-avoidance_angle_p * M_PI/180) - starting_pos_2_prop_.x * sin(-avoidance_angle_p * M_PI/180);
+            point1_direction_vec_.y = starting_pos_2_prop_.y * sin(-avoidance_angle_p * M_PI/180) + starting_pos_2_prop_.y * cos(-avoidance_angle_p * M_PI/180);
 
             // Direction vector from start to point 2 
 
-            point2_distance = prop_distance + avoidance_distance;
+            point2_distance = prop_distance + avoidance_distance_p;
 
-            point2_direction_vec.x = starting_pos_2_prop.x * point2_distance/prop_distance;
-            point2_direction_vec.y = starting_pos_2_prop.y * point2_distance/prop_distance;
+            point2_direction_vec_.x = starting_pos_2_prop_.x * point2_distance/prop_distance;
+            point2_direction_vec_.y = starting_pos_2_prop_.y * point2_distance/prop_distance;
 
             //Direction vector from start to point 3 (Rotate 30 degrees counter clockwise)
 
-            point3_direction_vec.x = starting_pos_2_prop.x * cos(avoidance_angle * M_PI/180) - starting_pos_2_prop.x * sin(avoidance_angle * M_PI/180);
-            point3_direction_vec.y = starting_pos_2_prop.y * sin(avoidance_angle * M_PI/180) + starting_pos_2_prop.y * cos(avoidance_angle * M_PI/180);
+            point3_direction_vec_.x = starting_pos_2_prop_.x * cos(avoidance_angle_p * M_PI/180) - starting_pos_2_prop_.x * sin(avoidance_angle_p * M_PI/180);
+            point3_direction_vec_.y = starting_pos_2_prop_.y * sin(avoidance_angle_p * M_PI/180) + starting_pos_2_prop_.y * cos(avoidance_angle_p * M_PI/180);
 
             status = states::MOVE_TO_POINT1;
             ROS_INFO("Moving to Point 1");
@@ -167,12 +176,12 @@ private:
 
             // Get point 1 
 
-            task_goal_pos.point.x = point1_direction_vec.x + starting_pos.pose.position.y;
-            task_goal_pos.point.y = point1_direction_vec.y + starting_pos.pose.position.x * -1;
-            task_goal_pos.task.current_task = task_master::Task::SPEED_RUN;
+            task_goal_pos_.point.x = point1_direction_vec_.x + starting_pos_.pose.position.y;
+            task_goal_pos_.point.y = point1_direction_vec_.y + starting_pos_.pose.position.x * -1;
+            task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
             
             ROS_INFO("Moving to Point 1");
-            task_pos_.publish(task_goal_pos);
+            task_pos_.publish(task_goal_pos_);
 
             if(isReached()){
 
@@ -187,11 +196,11 @@ private:
 
             // Get point 2
             
-            task_goal_pos.point.x = point2_direction_vec.x + starting_pos.pose.position.y;
-            task_goal_pos.point.y = point2_direction_vec.y + starting_pos.pose.position.x * -1;
-            task_goal_pos.task.current_task = task_master::Task::SPEED_RUN;
+            task_goal_pos_.point.x = point2_direction_vec_.x + starting_pos_.pose.position.y;
+            task_goal_pos_.point.y = point2_direction_vec_.y + starting_pos_.pose.position.x * -1;
+            task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
 
-            task_pos_.publish(task_goal_pos);
+            task_pos_.publish(task_goal_pos_);
 
             if(isReached()){
 
@@ -206,11 +215,11 @@ private:
 
             // Get point 3 
 
-            task_goal_pos.point.x = point3_direction_vec.x + starting_pos.pose.position.y;
-            task_goal_pos.point.y = point3_direction_vec.y + starting_pos.pose.position.x * -1;
-            task_goal_pos.task.current_task = task_master::Task::SPEED_RUN;
+            task_goal_pos_.point.x = point3_direction_vec_.x + starting_pos_.pose.position.y;
+            task_goal_pos_.point.y = point3_direction_vec_.y + starting_pos_.pose.position.x * -1;
+            task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
 
-            task_pos_.publish(task_goal_pos);
+            task_pos_.publish(task_goal_pos_);
 
             if(isReached()){
 
@@ -223,11 +232,11 @@ private:
 
         case states::RETURN_TO_START:
 
-            task_goal_pos.point.x = starting_pos.pose.position.y;
-            task_goal_pos.point.y = starting_pos.pose.position.x * -1;
-            task_goal_pos.task.current_task = task_master::Task::SPEED_RUN;
+            task_goal_pos_.point.x = starting_pos_.pose.position.y;
+            task_goal_pos_.point.y = starting_pos_.pose.position.x * -1;
+            task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
 
-            task_pos_.publish(task_goal_pos);
+            task_pos_.publish(task_goal_pos_);
 
             break;
        }
@@ -237,14 +246,14 @@ private:
        
        // Store starting pos
        if(status == states::NOT_STARTED){
-            starting_pos = *msg;
+            starting_pos_ = *msg;
        }
 
         // Get current position
         current_pos_ = *msg;
     }
 
-    void find_yellow_prop(){
+    bool find_yellow_prop(prop_mapper::Prop& yellow_prop){
 
         for(int i = 0; i < prop_array_.props.size(); i++){
             
@@ -252,9 +261,10 @@ private:
             if(prop_array_.props[i].prop_label == "yellow_marker"){
                 ROS_INFO_STREAM("Found yellow prop");
                 yellow_prop = prop_array_.props[i];
-                return;
+                return true;
             }
         }
+        return false;
     }
 };
 
