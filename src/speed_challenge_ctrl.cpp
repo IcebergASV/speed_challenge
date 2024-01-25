@@ -27,7 +27,7 @@ public:
         prop_sub_ = nh_.subscribe("/prop_array", 1, &SpeedChallenge::propCallback, this);
 
         // Subcribe to task_to_execute 
-        task_to_exec_ = nh_.subscribe("/task_to_execute", 1, &SpeedChallenge::taskCallback, this);
+        task_to_exec_ = nh_.subscribe("task_to_execute", 1, &SpeedChallenge::taskCallback, this);
 
         // Publish goal position 
         task_pos_ = nh_.advertise<task_master::TaskGoalPosition>("/task_goal_position", 10);
@@ -73,13 +73,13 @@ private:
     
     geometry_msgs::PoseStamped starting_pos_;
 
-    enum states {NOT_STARTED, MOVE_TO_POINT1, MOVE_TO_POINT2, MOVE_TO_POINT3, RETURN_TO_START};
+    geometry_msgs::Point gate_mid_point_;
+
+    enum states {NOT_STARTED, MOVE_TO_GATE, MOVE_TO_POINT1, MOVE_TO_POINT2, MOVE_TO_POINT3, MOVE_BACK_TO_GATE, RETURN_TO_START};
 
     states status = states::NOT_STARTED;
 
     prop_mapper::PropArray prop_array_;
-
-
 
     task_master::TaskGoalPosition task_goal_pos_;
 
@@ -97,7 +97,6 @@ private:
                 atDestination = true;
             }
         }
-
         return atDestination;
     }
 
@@ -107,23 +106,11 @@ private:
         prop_array_ = msg;
     }
 
-    void taskCallback(const task_master::Task msg){
-
-        prop_mapper::Prop yellow_prop;
-
-        if(find_yellow_prop(yellow_prop)){
-
-            ROS_INFO("Yellow Prop Found");
-        }
-        else{
-
-             ROS_INFO("Yellow Prop NOT Found");
-        }
+    void taskCallback(const task_master::TaskStatus msg){
 
         // Get x and y of prop
-        float prop_x = yellow_prop.vector.x;
-        float prop_y = yellow_prop.vector.y; 
-
+        float prop_x;
+        float prop_y;
         // Direction angle of prop 
         float prop_angle = atan(prop_y/prop_x) * (180.0/M_PI);
 
@@ -133,71 +120,105 @@ private:
         // TODO implement config file
         float point2_distance;
 
+        prop_mapper::Prop yellow_prop;
+
         switch(status){
 
         case states::NOT_STARTED: 
 
-           
+            // Wait for subscriber to pick up prop_array
+            if(prop_array_.props.size()!= 0 ){
 
-            // TODO: Use conversion node
-            // Direction vector from start to prop 
+                // TODO/TBD: Logic for if prop isn't found
+                if(find_yellow_prop(yellow_prop)){
 
-            starting_pos_2_prop_.x = prop_x - starting_pos_.pose.position.y;
-            starting_pos_2_prop_.y = prop_y - (-1 * starting_pos_.pose.position.x);
+                    ROS_INFO("Yellow Prop Found");
+                }
+                else{
 
-            // Distance from start to prop 
+                    ROS_INFO("Yellow Prop NOT Found");
+                }
 
-            prop_distance = pow((starting_pos_2_prop_.x * starting_pos_2_prop_.x) + (starting_pos_2_prop_.y * starting_pos_2_prop_.y), 0.5);
+                find_gate();
 
+                prop_x = yellow_prop.point.x;
+                prop_y = yellow_prop.point.y; 
 
-            // Direction vector from start to point 1 (Rotate 30 degrees clockwise)
+                // Direction vector from start to prop 
 
-            point1_direction_vec_.x = starting_pos_2_prop_.x * cos(-avoidance_angle_p * M_PI/180) - starting_pos_2_prop_.x * sin(-avoidance_angle_p * M_PI/180);
-            point1_direction_vec_.y = starting_pos_2_prop_.y * sin(-avoidance_angle_p * M_PI/180) + starting_pos_2_prop_.y * cos(-avoidance_angle_p * M_PI/180);
+                starting_pos_2_prop_.x = prop_x - starting_pos_.pose.position.y;
+                starting_pos_2_prop_.y = prop_y - (-1 * starting_pos_.pose.position.x);
 
-            // Direction vector from start to point 2 
+                // Distance from start to prop 
 
-            point2_distance = prop_distance + avoidance_distance_p;
+                prop_distance = pow((starting_pos_2_prop_.x * starting_pos_2_prop_.x) + (starting_pos_2_prop_.y * starting_pos_2_prop_.y), 0.5);
 
-            point2_direction_vec_.x = starting_pos_2_prop_.x * point2_distance/prop_distance;
-            point2_direction_vec_.y = starting_pos_2_prop_.y * point2_distance/prop_distance;
+                // Direction vector from start to point 1 (Rotate 30 degrees clockwise)
 
-            //Direction vector from start to point 3 (Rotate 30 degrees counter clockwise)
+                point1_direction_vec_.x = starting_pos_2_prop_.x * cos(-avoidance_angle_p * M_PI/180) - starting_pos_2_prop_.y * sin(-avoidance_angle_p * M_PI/180);
+                point1_direction_vec_.y = starting_pos_2_prop_.x * sin(-avoidance_angle_p * M_PI/180) + starting_pos_2_prop_.y * cos(-avoidance_angle_p * M_PI/180);
 
-            point3_direction_vec_.x = starting_pos_2_prop_.x * cos(avoidance_angle_p * M_PI/180) - starting_pos_2_prop_.x * sin(avoidance_angle_p * M_PI/180);
-            point3_direction_vec_.y = starting_pos_2_prop_.y * sin(avoidance_angle_p * M_PI/180) + starting_pos_2_prop_.y * cos(avoidance_angle_p * M_PI/180);
+                // Direction vector from start to point 2 
 
-            status = states::MOVE_TO_POINT1;
-            ROS_INFO("Moving to Point 1");
-            break;
+                point2_distance = prop_distance + avoidance_distance_p;
 
+                point2_direction_vec_.x = starting_pos_2_prop_.x * point2_distance/prop_distance;
+                point2_direction_vec_.y = starting_pos_2_prop_.y * point2_distance/prop_distance;
 
-        case states::MOVE_TO_POINT1:
+                //Direction vector from start to point 3 (Rotate 30 degrees counter clockwise)
 
-            // Get point 1 
+                point3_direction_vec_.x = starting_pos_2_prop_.x * cos(avoidance_angle_p * M_PI/180) - starting_pos_2_prop_.y * sin(avoidance_angle_p * M_PI/180);
+                point3_direction_vec_.y = starting_pos_2_prop_.x * sin(avoidance_angle_p * M_PI/180) + starting_pos_2_prop_.y * cos(avoidance_angle_p * M_PI/180);
 
-            task_goal_pos_.point.x = point1_direction_vec_.x + starting_pos_.pose.position.y;
-            task_goal_pos_.point.y = point1_direction_vec_.y + starting_pos_.pose.position.x * -1;
-            task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
-            
-            ROS_INFO("Moving to Point 1");
-            task_pos_.publish(task_goal_pos_);
+                status = states::MOVE_TO_GATE; 
 
-            if(isReached()){
-
-                status = states::MOVE_TO_POINT2;
-
-                ROS_INFO("Point 1 reached");
-                ROS_INFO("Moving to Point 2");
             }
             break;
 
-        case states::MOVE_TO_POINT2:
+         case states::MOVE_TO_GATE:
+
+             ROS_INFO("Moving to Gate");
+
+             task_goal_pos_.point.x = gate_mid_point_.x;
+             task_goal_pos_.point.y = gate_mid_point_.y;
+
+             task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
+            
+             task_pos_.publish(task_goal_pos_);
+
+             if(isReached()){
+
+                 status = states::MOVE_TO_POINT1;
+
+                 ROS_INFO("Gate reached");
+                 ROS_INFO("Moving to Point 1");
+             }
+             break;
+
+         case states::MOVE_TO_POINT1:
+
+         // Get point 1 
+
+             task_goal_pos_.point.x = point1_direction_vec_.x + starting_pos_.pose.position.x;
+             task_goal_pos_.point.y = point1_direction_vec_.y + starting_pos_.pose.position.y;
+
+             task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
+
+             task_pos_.publish(task_goal_pos_);
+
+             if(isReached()){
+                 status = states::MOVE_TO_POINT2;
+                 ROS_INFO("Point 1 reached");
+                 ROS_INFO("Moving to Point 2");
+             }
+             break;
+
+         case states::MOVE_TO_POINT2:
 
             // Get point 2
             
-            task_goal_pos_.point.x = point2_direction_vec_.x + starting_pos_.pose.position.y;
-            task_goal_pos_.point.y = point2_direction_vec_.y + starting_pos_.pose.position.x * -1;
+            task_goal_pos_.point.x = point2_direction_vec_.x + starting_pos_.pose.position.x;
+            task_goal_pos_.point.y = point2_direction_vec_.y + starting_pos_.pose.position.y;
             task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
 
             task_pos_.publish(task_goal_pos_);
@@ -214,33 +235,50 @@ private:
         case states::MOVE_TO_POINT3:
 
             // Get point 3 
-
-            task_goal_pos_.point.x = point3_direction_vec_.x + starting_pos_.pose.position.y;
-            task_goal_pos_.point.y = point3_direction_vec_.y + starting_pos_.pose.position.x * -1;
+            task_goal_pos_.point.x = point3_direction_vec_.x + starting_pos_.pose.position.x;
+            task_goal_pos_.point.y = point3_direction_vec_.y + starting_pos_.pose.position.y;
             task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
 
             task_pos_.publish(task_goal_pos_);
 
             if(isReached()){
 
-                status = states::RETURN_TO_START;
+                status = states::MOVE_BACK_TO_GATE;
 
                 ROS_INFO("Point 3 reached");
-                ROS_INFO("Moving back to start");
+                ROS_INFO("Moving back to gate");
             }
             break;
 
+        case states::MOVE_BACK_TO_GATE:
+
+            task_goal_pos_.point.x = gate_mid_point_.x;
+            task_goal_pos_.point.y = gate_mid_point_.y;
+
+            task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
+            
+            task_pos_.publish(task_goal_pos_);
+
+            if(isReached()){
+
+                status = states::RETURN_TO_START;
+
+                ROS_INFO("Gate reached");
+                ROS_INFO("Returning to start");
+             }
+             break;
+
         case states::RETURN_TO_START:
 
-            task_goal_pos_.point.x = starting_pos_.pose.position.y;
-            task_goal_pos_.point.y = starting_pos_.pose.position.x * -1;
+            task_goal_pos_.point.x = starting_pos_.pose.position.x;
+            task_goal_pos_.point.y = starting_pos_.pose.position.y;
             task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
 
             task_pos_.publish(task_goal_pos_);
 
             break;
        }
-    }
+}
 
     void globalPositionCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
        
@@ -256,16 +294,61 @@ private:
     bool find_yellow_prop(prop_mapper::Prop& yellow_prop){
 
         for(int i = 0; i < prop_array_.props.size(); i++){
+           
+           // TODO: Add logic for if yellow prop isn't found 
+           if(prop_array_.props[i].prop_label == "yellow_marker"){
+               ROS_INFO_STREAM("Found yellow prop");
+               yellow_prop = prop_array_.props[i];
+               return true;
+           }
+        }
+        return false;
+    }
+
+    bool find_gate(){
+
+        bool green_found = false;
+        bool red_found = false;
+
+        prop_mapper::Prop green_prop;
+        prop_mapper::Prop red_prop;
+
+        ROS_INFO("Finding gate");
+
+       for(int i = 0; i < prop_array_.props.size(); i++){
             
-            // TODO: Add logic for if yellow prop isn't found 
-            if(prop_array_.props[i].prop_label == "yellow_marker"){
-                ROS_INFO_STREAM("Found yellow prop");
-                yellow_prop = prop_array_.props[i];
-                return true;
+           // TODO: Add logic for if props aren't found
+            if(prop_array_.props[i].prop_label == "red_marker"){
+    
+               red_prop = prop_array_.props[i];
+               red_found = true;
+            }
+            if(prop_array_.props[i].prop_label == "green_marker"){
+
+               green_prop = prop_array_.props[i];
+               green_found = true;
+            }
+            if(green_found && red_found){
+
+                gate_mid_point_ = calc_midpoint(green_prop, red_prop);
+                return true; 
             }
         }
         return false;
     }
+    
+
+    geometry_msgs::Point calc_midpoint(prop_mapper::Prop& green_prop, prop_mapper::Prop& red_prop){
+
+        geometry_msgs::Point mid_point;
+
+        mid_point.x =  (green_prop.point.x + red_prop.point.x)/2;
+        mid_point.y =  (green_prop.point.y + red_prop.point.y)/2;
+
+        return mid_point;
+
+    }
+
 };
 
 int main(int argc, char** argv)
