@@ -29,6 +29,9 @@ public:
         // Subcribe to task_to_execute 
         task_to_exec_ = nh_.subscribe("task_to_execute", 1, &SpeedChallenge::taskCallback, this);
 
+        // Publish task_status 
+        task_status_ = nh_.advertise<task_master::TaskStatus>("task_status", 10);
+
         // Publish goal position 
         task_pos_ = nh_.advertise<task_master::TaskGoalPosition>("/task_goal_position", 10);
 
@@ -55,6 +58,7 @@ private:
     ros::Subscriber task_to_exec_;
     ros::Subscriber global_pos_;
     ros::Publisher task_pos_;
+    ros::Publisher task_status_;
    
     //Params 
     float avoidance_angle_p;
@@ -75,7 +79,7 @@ private:
 
     geometry_msgs::Point gate_mid_point_;
 
-    enum states {NOT_STARTED, MOVE_TO_GATE, MOVE_TO_POINT1, MOVE_TO_POINT2, MOVE_TO_POINT3, MOVE_BACK_TO_GATE, RETURN_TO_START};
+    enum states {NOT_STARTED, MOVE_TO_GATE, MOVE_TO_POINT1, MOVE_TO_POINT2, MOVE_TO_POINT3, MOVE_BACK_TO_GATE, RETURN_TO_START, COMPLETE};
 
     states status = states::NOT_STARTED;
 
@@ -122,6 +126,10 @@ private:
 
         prop_mapper::Prop yellow_prop;
 
+        task_master::TaskStatus taskStatus;
+        taskStatus.status = task_master::TaskStatus::IN_PROGRESS;
+        taskStatus.task.current_task = task_master::Task::SPEED_RUN;
+
         switch(status){
 
         case states::NOT_STARTED: 
@@ -135,11 +143,20 @@ private:
                     ROS_INFO("Yellow Prop Found");
                 }
                 else{
-
                     ROS_INFO("Yellow Prop NOT Found");
+                    taskStatus.status = task_master::TaskStatus::FAILED;
+                    taskStatus.task.current_task = task_master::Task::SPEED_RUN;
                 }
 
-                find_gate();
+                if(find_gate()){
+                    ROS_INFO("Gate found");
+                }
+                else{
+
+                    ROS_INFO("Gate NOT Found");
+                    taskStatus.status = task_master::TaskStatus::FAILED;
+                    taskStatus.task.current_task = task_master::Task::SPEED_RUN;
+                }
 
                 prop_x = yellow_prop.point.x;
                 prop_y = yellow_prop.point.y; 
@@ -196,7 +213,7 @@ private:
 
          case states::MOVE_TO_POINT1:
 
-         // Get point 1 
+            // Get point 1 
 
              task_goal_pos_.point.x = point1_direction_vec_.x + starting_pos_.pose.position.x;
              task_goal_pos_.point.y = point1_direction_vec_.y + starting_pos_.pose.position.y;
@@ -275,8 +292,23 @@ private:
 
             task_pos_.publish(task_goal_pos_);
 
+            if(isReached()){
+
+                status = states::COMPLETE;
+
+                ROS_INFO("Task Complete");
+             
+             }
+            break;
+
+        case states::COMPLETE:
+
+            taskStatus.status = task_master::TaskStatus::COMPLETE;
+            taskStatus.task.current_task = task_master::Task::SPEED_RUN;
             break;
        }
+
+       task_status_.publish(taskStatus);
 }
 
     void localPositionCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
