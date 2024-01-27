@@ -34,7 +34,7 @@ public:
 
         // Get current pos 
         private_nh_.param<std::string>("local_pose_topic", local_pose_topic_, "/mavros/local_position/pose");
-        global_pos_ = nh_.subscribe(local_pose_topic_, 1, &SpeedChallenge::globalPositionCallback, this);
+        global_pos_ = nh_.subscribe(local_pose_topic_, 1, &SpeedChallenge::localPositionCallback, this);
 
     }
 
@@ -171,13 +171,12 @@ private:
                 point3_direction_vec_.y = starting_pos_2_prop_.x * sin(avoidance_angle_p * M_PI/180) + starting_pos_2_prop_.y * cos(avoidance_angle_p * M_PI/180);
 
                 status = states::MOVE_TO_GATE; 
+                ROS_INFO("Moving to Gate");
 
             }
             break;
 
          case states::MOVE_TO_GATE:
-
-             ROS_INFO("Moving to Gate");
 
              task_goal_pos_.point.x = gate_mid_point_.x;
              task_goal_pos_.point.y = gate_mid_point_.y;
@@ -280,7 +279,7 @@ private:
        }
 }
 
-    void globalPositionCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+    void localPositionCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
        
        // Store starting pos
        if(status == states::NOT_STARTED){
