@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
   geometry_msgs
+  prop_mapper
+  task_master
   message_generation
   mavros
 )
@@ -140,6 +142,10 @@ include_directories(
 add_executable(speed_challenge_ctrl src/speed_challenge_ctrl.cpp)
 target_link_libraries(speed_challenge_ctrl ${catkin_LIBRARIES})
 add_dependencies(speed_challenge_ctrl ${catkin_EXPORTED_TARGETS} ${${PROJECT_NAME}_EXPORTED_TARGETS})
+
+add_executable(fake_prop_array src/fake_prop_array.cpp)
+target_link_libraries(fake_prop_array ${catkin_LIBRARIES})
+add_dependencies(fake_prop_array ${catkin_EXPORTED_TARGETS} ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
