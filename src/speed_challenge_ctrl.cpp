@@ -19,7 +19,7 @@ public:
     SpeedChallenge(): nh_(""), private_nh_("~")
     {
         // Get params 
-        private_nh_.param<float>("avoidance_angle", avoidance_angle_p, 30.0);
+        private_nh_.param<float>("avoidance_angle", avoidance_angle_p, 15.0);
         private_nh_.param<float>("avoidance_distance", avoidance_distance_p, 5.0);
         private_nh_.param<float>("acceptable_error", acceptable_error_p, 2.0);
 
@@ -89,8 +89,8 @@ private:
 
         // TODO: use conversion node 
         // Converting to gazebo coordinates 
-        float current_pos_x = current_pos_.pose.position.y;
-        float current_pos_y = -1 * current_pos_.pose.position.x;
+        float current_pos_x = current_pos_.pose.position.x;
+        float current_pos_y = current_pos_.pose.position.y;
 
         if (current_pos_x < task_goal_pos_.point.x + acceptable_error_p & current_pos_x > task_goal_pos_.point.x - acceptable_error_p) {
             if (current_pos_y < task_goal_pos_.point.y + acceptable_error_p & current_pos_y > task_goal_pos_.point.y - acceptable_error_p) {
@@ -146,8 +146,8 @@ private:
 
                 // Direction vector from start to prop 
 
-                starting_pos_2_prop_.x = prop_x - starting_pos_.pose.position.y;
-                starting_pos_2_prop_.y = prop_y - (-1 * starting_pos_.pose.position.x);
+                starting_pos_2_prop_.x = prop_x - starting_pos_.pose.position.x;
+                starting_pos_2_prop_.y = prop_y - starting_pos_.pose.position.y;
 
                 // Distance from start to prop 
 
