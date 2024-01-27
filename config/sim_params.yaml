@@ -7,5 +7,3 @@ avoidance_distance: 5
 
 # acceptable error when checking if point is reached
 acceptable_error: 2
-
-

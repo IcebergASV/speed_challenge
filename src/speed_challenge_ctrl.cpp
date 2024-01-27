@@ -19,7 +19,7 @@ public:
     SpeedChallenge(): nh_(""), private_nh_("~")
     {
         // Get params 
-        private_nh_.param<float>("avoidance_angle", avoidance_angle_p, 30.0);
+        private_nh_.param<float>("avoidance_angle", avoidance_angle_p, 15.0);
         private_nh_.param<float>("avoidance_distance", avoidance_distance_p, 5.0);
         private_nh_.param<float>("acceptable_error", acceptable_error_p, 2.0);
 

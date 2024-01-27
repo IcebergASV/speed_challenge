@@ -19,14 +19,14 @@ int main(int argc, char** argv) {
     red_prop.prop_label = "red_marker";
     red_prop.id = 0;
     red_prop.point.x = 8;       //
-    red_prop.point.y = 4;       // red prop at (-1.25, 5, 0)
+    red_prop.point.y = 5;       // red prop at (-1.25, 5, 0)
     red_prop.point.z = 0;       //
 
     prop_mapper::Prop green_prop;
     green_prop.prop_label = "green_marker";
     green_prop.id = 1;
     green_prop.point.x = 8;     //
-    green_prop.point.y = -4;   // green prop at (1.25, 5, 0)
+    green_prop.point.y = -5;   // green prop at (1.25, 5, 0)
     green_prop.point.z = 0;     //
 
     prop_mapper::Prop yellow_prop;
