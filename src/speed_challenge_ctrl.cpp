@@ -110,7 +110,7 @@ private:
         prop_array_ = msg;
     }
 
-    void taskCallback(const task_master::TaskStatus msg){
+    void taskCallback(const task_master::Task msg){
 
         // Get x and y of prop
         float prop_x;

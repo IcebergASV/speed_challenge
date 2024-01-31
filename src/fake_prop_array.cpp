@@ -18,22 +18,22 @@ int main(int argc, char** argv) {
     prop_mapper::Prop red_prop;
     red_prop.prop_label = "red_marker";
     red_prop.id = 0;
-    red_prop.point.x = 8;       
-    red_prop.point.y = 5;       
+    red_prop.point.x = -6;       
+    red_prop.point.y = 10;       
     red_prop.point.z = 0;       
 
     prop_mapper::Prop green_prop;
     green_prop.prop_label = "green_marker";
     green_prop.id = 1;
-    green_prop.point.x = 8;     
-    green_prop.point.y = -5;   
+    green_prop.point.x = 6;     
+    green_prop.point.y = 10;   
     green_prop.point.z = 0;     
 
     prop_mapper::Prop yellow_prop;
     yellow_prop.id = 2;
     yellow_prop.prop_label = "yellow_marker";
-    yellow_prop.point.x = 18;       
-    yellow_prop.point.y = 0;     
+    yellow_prop.point.x = 0;       
+    yellow_prop.point.y = 19;     
     yellow_prop.point.z = 0;       
 
   
