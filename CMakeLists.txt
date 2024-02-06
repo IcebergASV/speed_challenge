@@ -13,8 +13,6 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   prop_mapper
   task_master
-  message_generation
-  mavros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -70,11 +68,9 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   geometry_msgs
-   std_msgs
- )
+ #generate_messages(
+ #  DEPENDENCIES
+ #)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
