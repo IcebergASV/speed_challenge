@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
   
+  <!-- Arguments -->
+  <arg name="use_mock_prop_array" default="false"/>
+
   <!-- Nodes -->
   <node name="speed_challenge_ctrl" pkg="speed_challenge" type="speed_challenge_ctrl" output="screen">
     <rosparam file="$(find speed_challenge)/config/sim_params.yaml" command="load" />
      <remap from="/mavros/local_position/pose" to="/gazebo_pose"/>
   </node>
+
+  <node name="fake_prop_array" pkg="speed_challenge" type="fake_prop_array" output="screen" if="$(arg use_mock_prop_array)"></node>
 
 </launch>

@@ -6,7 +6,7 @@
 // ALSO INCLUDES FAKE TASK MANAGER
 
 int main(int argc, char** argv) {
-	ros::init(argc, argv, "fake_prop_node");
+	ros::init(argc, argv, "fake_prop_array");
     ros::NodeHandle nh;
 
     ros::Publisher pub = nh.advertise<prop_mapper::PropArray>("/prop_array", 1000);
