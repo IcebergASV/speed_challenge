@@ -8,4 +8,12 @@ avoidance_distance: 5
 # acceptable error when checking if point is reached
 acceptable_error: 2
 
+# whether or not we are using color in object detection
+colorblind_mode: true
+
+# maximum distance that gate can be away (only relevant in colorblind mode)
+gate_max_distance: 5.0
+
+# minimum distance that yellow buoy can be away, filter out gate (only relevant in colorblind mode)
+yellow_buoy_distance: 5.0
 

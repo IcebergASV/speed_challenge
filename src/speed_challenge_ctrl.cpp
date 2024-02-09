@@ -11,6 +11,7 @@
 #include <geometry_msgs/Point.h>
 #include <iostream>
 #include <vector>
+#include <mavros_msgs/WaypointReached.h>
 
 class SpeedChallenge{
 
@@ -22,12 +23,18 @@ public:
         private_nh_.param<float>("avoidance_angle", avoidance_angle_p, 15.0);
         private_nh_.param<float>("avoidance_distance", avoidance_distance_p, 5.0);
         private_nh_.param<float>("acceptable_error", acceptable_error_p, 2.0);
+        private_nh_.param<bool>("colorblind_mode", colorblind_p, true);
+        private_nh_.param<double>("gate_max_distance", gate_dist_p, 5.0);
+        private_nh_.param<double>("yellow_buoy_distance", yellow_dist_p, 5.0);
 
         // Subcribe to prop array
         prop_sub_ = nh_.subscribe("/prop_array", 1, &SpeedChallenge::propCallback, this);
 
         // Subcribe to task_to_execute 
         task_to_exec_ = nh_.subscribe("task_to_execute", 1, &SpeedChallenge::taskCallback, this);
+
+        // mission reached sub
+        mission_reached_ = nh_.subscribe("/mavros/mission/reached", 1, &SpeedChallenge::missionReachedCallback, this);
 
         // Publish task_status 
         task_status_ = nh_.advertise<task_master::TaskStatus>("task_status", 10);
@@ -64,8 +71,13 @@ private:
     float avoidance_angle_p;
     float avoidance_distance_p;
     float acceptable_error_p;
+    bool colorblind_p;
+    double gate_dist_p;
+    double yellow_dist_p;
 
     std::string local_pose_topic_;
+    bool wp_reached_;
+    bool published_;
 
     geometry_msgs::PoseStamped current_pos_;
 
@@ -113,7 +125,7 @@ private:
     }
 
     void taskCallback(const task_master::Task msg){
-
+        ROS_DEBUG_STREAM(TAG << "in taskCallback()");
         task_master::TaskStatus taskStatus;
         taskStatus.status = task_master::TaskStatus::NOT_STARTED;
         taskStatus.task.current_task = task_master::Task::SPEED_RUN;
@@ -154,9 +166,11 @@ private:
    
                 task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
                
-                task_pos_.publish(task_goal_pos_);
+                if(!published_) {
+                    task_pos_.publish(task_goal_pos_);
+                }
    
-                if(isReached()){
+                if(wp_reached_){
    
                     status = states::FIND_YELLOW_BUOY;
    
@@ -221,10 +235,11 @@ private:
    
                 task_pos_.publish(task_goal_pos_);
    
-                if(isReached()){
+                if(wp_reached_){
                     status = states::MOVE_TO_POINT2;
                     ROS_INFO_STREAM(TAG << "Point 1 reached");
                     ROS_INFO_STREAM(TAG << "Moving to Point 2 at " << point2_direction_vec_.x + starting_pos_.pose.position.x << ", y: " << point2_direction_vec_.y + starting_pos_.pose.position.y);
+                    wp_reached_ = false;
                 }
                 break;
             }
@@ -236,9 +251,11 @@ private:
                task_goal_pos_.point.y = point2_direction_vec_.y + starting_pos_.pose.position.y;
                task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
    
-               task_pos_.publish(task_goal_pos_);
+                if(!published_) {
+                    task_pos_.publish(task_goal_pos_);
+                }
    
-                if(isReached()){
+                if(wp_reached_){
 
                     status = states::MOVE_TO_POINT3;
 
@@ -257,7 +274,7 @@ private:
     
                 task_pos_.publish(task_goal_pos_);
     
-                if(isReached()){
+                if(wp_reached_){
     
                     status = states::MOVE_BACK_TO_GATE;
     
@@ -273,9 +290,11 @@ private:
     
                 task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
                 
-                task_pos_.publish(task_goal_pos_);
-    
-                if(isReached()){
+                if(!published_) {
+                    task_pos_.publish(task_goal_pos_);
+                }
+
+                if(wp_reached_){
     
                     status = states::RETURN_TO_START;
     
@@ -290,9 +309,11 @@ private:
                 task_goal_pos_.point.y = starting_pos_.pose.position.y;
                 task_goal_pos_.task.current_task = task_master::Task::SPEED_RUN;
 
-                task_pos_.publish(task_goal_pos_);
+                if(!published_) {
+                    task_pos_.publish(task_goal_pos_);
+                }
 
-                if(isReached()){
+                if(wp_reached_){
 
                     status = states::COMPLETE;
 
@@ -324,16 +345,34 @@ private:
         current_pos_ = *msg;
     }
 
+    void missionReachedCallback(const mavros_msgs::WaypointReached::ConstPtr& msg) {
+        if (!wp_reached_) {
+            wp_reached_ = true;
+            published_ = false;
+        }
+    }
+
     bool find_yellow_buoy(prop_mapper::Prop& yellow_buoy){
 
         for(int i = 0; i < prop_array_.props.size(); i++){
-           
-           // TODO: Add logic for if yellow prop isn't found 
-           if(prop_array_.props[i].prop_label == "yellow_buoy"){
-               ROS_INFO_STREAM("Found yellow prop");
-               yellow_buoy = prop_array_.props[i];
-               return true;
-           }
+            if (colorblind_p) {
+                prop_mapper::Prop buoy = prop_array_.props[i];
+                double dx = buoy.point.x-current_pos_.pose.position.x;
+                double dy = buoy.point.y-current_pos_.pose.position.y;
+                double prop_dist = sqrt(pow(dx,2)+pow(dy,2));
+                if(prop_array_.props[i].prop_label == "buoy" && prop_dist > yellow_dist_p) {
+                    yellow_buoy = prop_array_.props[i];
+                    return true;
+                }
+            }
+            else {
+                // TODO: Add logic for if yellow prop isn't found 
+                if(prop_array_.props[i].prop_label == "yellow_buoy"){
+                    ROS_INFO_STREAM("Found yellow prop");
+                    yellow_buoy = prop_array_.props[i];
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -349,22 +388,60 @@ private:
         ROS_INFO_STREAM(TAG << "Finding gate");
 
        for(int i = 0; i < prop_array_.props.size(); i++){
-            
-           // TODO: Add logic for if props aren't found
-            if(prop_array_.props[i].prop_label == "red_buoy"){
-    
-               red_prop = prop_array_.props[i];
-               red_found = true;
+            if(colorblind_p) {
+                double b1_dist = 0;
+                double b2_dist, dx, dy;
+                if(prop_array_.props[i].prop_label == "buoy" && green_found) {
+                    ROS_DEBUG_STREAM(TAG << "buoy 1");
+                    red_prop = prop_array_.props[i];
+                    dx = red_prop.point.x-current_pos_.pose.position.x;
+                    dy = red_prop.point.y-current_pos_.pose.position.y;
+                    b2_dist = sqrt(pow(dx,2)+pow(dy,2));
+                    if (b2_dist < gate_dist_p) {
+                        ROS_DEBUG_STREAM(TAG << "buoy 1 found");
+                        red_found = true;
+                    }
+                    else {
+                        b2_dist = 0; // look for different buoy
+                    }
+                }
+                else if(prop_array_.props[i].prop_label == "buoy" && b1_dist == 0){
+                    ROS_DEBUG_STREAM(TAG << "buoy 2");
+                    green_prop = prop_array_.props[i];
+                    dx = green_prop.point.x-current_pos_.pose.position.x;
+                    dy = green_prop.point.y-current_pos_.pose.position.y;
+                    b1_dist = sqrt(pow(dx,2)+pow(dy,2));
+                    if (b1_dist < gate_dist_p) {
+                        ROS_DEBUG_STREAM(TAG << "buoy 2");
+                        green_found = true;
+                    }
+                    else {
+                        b1_dist = 0; // look for different buoy
+                    }
+                }
+                if(green_found && red_found){ // && (sqrt(pow(green_prop.point.x-red_prop.point.x,2)+pow(green_prop.point.y-red_prop.point.y,2))
+                    ROS_DEBUG_STREAM(TAG << "red and green buoys found");
+                    gate_mid_point_ = calc_midpoint(green_prop, red_prop);
+                    return true; 
+                }
             }
-            if(prop_array_.props[i].prop_label == "green_buoy"){
+            else { // not colorblind
+            // TODO: Add logic for if props aren't found
+                if(prop_array_.props[i].prop_label == "red_buoy"){
+        
+                    red_prop = prop_array_.props[i];
+                    red_found = true;
+                }
+                if(prop_array_.props[i].prop_label == "green_buoy"){
 
-               green_prop = prop_array_.props[i];
-               green_found = true;
-            }
-            if(green_found && red_found){
+                    green_prop = prop_array_.props[i];
+                    green_found = true;
+                }
+                if(green_found && red_found){
 
-                gate_mid_point_ = calc_midpoint(green_prop, red_prop);
-                return true; 
+                    gate_mid_point_ = calc_midpoint(green_prop, red_prop);
+                    return true; 
+                }
             }
         }
         return false;
@@ -388,7 +465,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "speed_challenge_node");
 
-    if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info))
+    if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
         ros::console::notifyLoggerLevelsChanged();
 
     SpeedChallenge speed_challenge;
